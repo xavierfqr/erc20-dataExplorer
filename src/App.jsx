@@ -11,22 +11,24 @@ import {
 } from '@chakra-ui/react';
 import { Alchemy, Network, Utils } from 'alchemy-sdk';
 import { useState } from 'react';
+import { Connect } from './components/Connect';
 
 function App() {
   const [userAddress, setUserAddress] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState([]);
   const [hasQueried, setHasQueried] = useState(false);
   const [tokenDataObjects, setTokenDataObjects] = useState([]);
 
   async function getTokenBalance() {
     const config = {
-      apiKey: '<-- COPY-PASTE YOUR ALCHEMY API KEY HERE -->',
-      network: Network.ETH_MAINNET,
+      apiKey:  import.meta.env.VITE_ALCHEMY_API_KEY,
+      network: Network.ETH_GOERLI,
     };
 
     const alchemy = new Alchemy(config);
     const data = await alchemy.core.getTokenBalances(userAddress);
-
+    console.log(data)
     setResults(data);
 
     const tokenDataPromises = [];
@@ -43,6 +45,7 @@ function App() {
   }
   return (
     <Box w="100vw">
+      <Connect></Connect>
       <Center>
         <Flex
           alignItems={'center'}
@@ -84,26 +87,26 @@ function App() {
 
         {hasQueried ? (
           <SimpleGrid w={'90vw'} columns={4} spacing={24}>
-            {results.tokenBalances.map((e, i) => {
+            {results.tokenBalances.map((tokenBalance, index) => {
               return (
                 <Flex
                   flexDir={'column'}
                   color="white"
                   bg="blue"
                   w={'20vw'}
-                  key={e.id}
+                  key={tokenBalance.id}
                 >
                   <Box>
-                    <b>Symbol:</b> ${tokenDataObjects[i].symbol}&nbsp;
+                    <b>Symbol:</b> ${tokenDataObjects[index].symbol}&nbsp;
                   </Box>
                   <Box>
                     <b>Balance:</b>&nbsp;
                     {Utils.formatUnits(
-                      e.tokenBalance,
-                      tokenDataObjects[i].decimals
+                      tokenBalance.tokenBalance,
+                      tokenDataObjects[index].decimals
                     )}
                   </Box>
-                  <Image src={tokenDataObjects[i].logo} />
+                  <Image src={tokenDataObjects[index].logo} />
                 </Flex>
               );
             })}
