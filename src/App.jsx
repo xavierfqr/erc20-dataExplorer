@@ -8,10 +8,14 @@ import {
   Input,
   SimpleGrid,
   Text,
+  useToast,
 } from '@chakra-ui/react';
+
 import { Alchemy, Network, Utils } from 'alchemy-sdk';
 import { useState } from 'react';
+import { useAccount } from 'wagmi';
 import { Connect } from './components/Connect';
+import { shortenAddress } from './utils/utils';
 
 function App() {
   const [userAddress, setUserAddress] = useState('');
@@ -19,6 +23,8 @@ function App() {
   const [results, setResults] = useState([]);
   const [hasQueried, setHasQueried] = useState(false);
   const [tokenDataObjects, setTokenDataObjects] = useState([]);
+  const { address, isConnected } = useAccount();
+  const toast = useToast()
 
   async function getTokenBalance() {
     const config = {
@@ -27,26 +33,36 @@ function App() {
     };
 
     setIsLoading(true);
-    const alchemy = new Alchemy(config);
-    const data = await alchemy.core.getTokenBalances(userAddress);
-    console.log(data)
-    setResults(data);
+    try {
+      const alchemy = new Alchemy(config);
+      const data = await alchemy.core.getTokenBalances(userAddress);
+      setResults(data);
 
-    const tokenDataPromises = [];
+      const tokenDataPromises = [];
 
-    for (let i = 0; i < data.tokenBalances.length; i++) {
-      const tokenData = alchemy.core.getTokenMetadata(
-        data.tokenBalances[i].contractAddress
-      );
-      tokenDataPromises.push(tokenData);
+      for (let i = 0; i < data.tokenBalances.length; i++) {
+        const tokenData = alchemy.core.getTokenMetadata(
+          data.tokenBalances[i].contractAddress
+        );
+        tokenDataPromises.push(tokenData);
+      }
+
+      setTokenDataObjects(await Promise.all(tokenDataPromises));
+      setHasQueried(true);
+    } catch (error) {
+      toast({
+        title: 'Failed to fetch token balances.',
+        description: "Address doesn't exist or is invalid.",
+        status: 'error',
+        duration: 9000,
+        isClosable: true,
+        position: 'top'
+      })
     }
-
-    setTokenDataObjects(await Promise.all(tokenDataPromises));
-    setHasQueried(true);
     setIsLoading(false);
   }
   return (
-    <Box w="100vw">
+    <Box w="100%" overflow={'hidden'}>
       <Connect></Connect>
       <Center>
         <Flex
@@ -72,44 +88,52 @@ function App() {
         <Heading mt={42}>
           Get all the ERC-20 token balances of this address:
         </Heading>
-        <Input
-          onChange={(e) => setUserAddress(e.target.value)}
-          color="black"
-          w="600px"
-          textAlign="center"
-          p={4}
-          bgColor="white"
-          fontSize={24}
-        />
+        <Flex alignItems="center" mt={4}>
+          <Input
+            onChange={(e) => setUserAddress(e.target.value)}
+            value={userAddress}
+            color="black"
+            w="600px"
+            textAlign="center"
+            p={4}
+            bgColor="white"
+            fontSize={20}
+          />
+          <Button ml={2} colorScheme={"cblue"} fontSize={20} onClick={() => {setUserAddress(address)}} disabled={!isConnected}>
+           Use your address
+          </Button>
+        </Flex>
+        
         {console.log(isLoading)}
-        <Button fontSize={20} onClick={getTokenBalance} mt={36} bgColor="blue" isLoading={isLoading} disabled={isLoading}>
+        <Button colorScheme={"cdarkblue"} fontSize={20} onClick={getTokenBalance} mt={4} isLoading={isLoading} disabled={isLoading}>
           Check ERC-20 Token Balances
         </Button>
-
-        <Heading my={36}>ERC-20 token balances:</Heading>
+      
+        <Heading my={8}>ERC-20 token balances:</Heading>
 
         {hasQueried ? (
-          <SimpleGrid w={'90vw'} columns={4} spacing={24}>
-            {results.tokenBalances.map((tokenBalance, index) => {
+          <SimpleGrid w={'90vw'} columns={4} spacing={10} >
+            {results?.tokenBalances?.map((tokenBalance, index) => {
               return (
                 <Flex
                   flexDir={'column'}
-                  color="white"
-                  bg="blue"
-                  w={'20vw'}
+                  color="f"
+                  bg="#151E3F"
+                  p={2}
+                  rounded={'md'}
                   key={tokenBalance.id}
                 >
                   <Box>
-                    <b>Symbol:</b> ${tokenDataObjects[index].symbol}&nbsp;
+                    <b>Symbol:</b> ${tokenDataObjects?.[index]?.symbol}&nbsp;
                   </Box>
                   <Box>
                     <b>Balance:</b>&nbsp;
                     {Utils.formatUnits(
-                      tokenBalance.tokenBalance,
-                      tokenDataObjects[index].decimals
+                      tokenBalance?.tokenBalance,
+                      tokenDataObjects?.[index]?.decimals
                     )}
                   </Box>
-                  <Image src={tokenDataObjects[index].logo} />
+                  <Image src={tokenDataObjects?.[index]?.logo} />
                 </Flex>
               );
             })}
