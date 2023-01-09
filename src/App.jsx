@@ -124,7 +124,7 @@ function App() {
                   key={tokenBalance.id}
                 >
                   <Box>
-                    <b>Symbol:</b> ${tokenDataObjects?.[index]?.symbol}&nbsp;
+                    <b>Symbol:</b> {tokenDataObjects?.[index]?.symbol}&nbsp;
                   </Box>
                   <Box>
                     <b>Balance:</b>&nbsp;
