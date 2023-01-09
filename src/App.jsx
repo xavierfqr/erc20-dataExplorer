@@ -13,41 +13,49 @@ import {
 
 import { Alchemy, Network, Utils } from 'alchemy-sdk';
 import { useState } from 'react';
+import { useQuery } from 'react-query';
 import { useAccount } from 'wagmi';
 import { Connect } from './components/Connect';
-import { shortenAddress } from './utils/utils';
+
+const config = {
+  apiKey:  import.meta.env.VITE_ALCHEMY_API_KEY,
+  network: Network.ETH_GOERLI,
+};
+const alchemy = new Alchemy(config);
+
+async function getTokenBalances(userAddress) {
+  return await alchemy.core.getTokenBalances(userAddress);
+} 
+
+async function getMetadataTokens(tokenBalances) {
+  const tokenDataPromises = [];
+
+  for (let i = 0; i < tokenBalances.length; i++) {
+    const tokenData = alchemy.core.getTokenMetadata(
+      tokenBalances[i].contractAddress
+    );
+    tokenDataPromises.push(tokenData);
+  }
+
+  return await Promise.all(tokenDataPromises);
+}
 
 function App() {
   const [userAddress, setUserAddress] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [results, setResults] = useState([]);
   const [hasQueried, setHasQueried] = useState(false);
-  const [tokenDataObjects, setTokenDataObjects] = useState([]);
   const { address, isConnected } = useAccount();
+  const { data: tokenData, refetch: refetchTokenData } = useQuery(['tokenData', userAddress], () => getTokenBalances(userAddress), { enabled: false });
+  const { data: tokenDataObjects } = useQuery('tokenMetadata', () => getMetadataTokens(tokenData?.tokenBalances ?? []), { enabled: tokenData?.tokenBalances?.length > 0 });
+
+
   const toast = useToast()
 
   async function getTokenBalance() {
-    const config = {
-      apiKey:  import.meta.env.VITE_ALCHEMY_API_KEY,
-      network: Network.ETH_GOERLI,
-    };
-
     setIsLoading(true);
+    
     try {
-      const alchemy = new Alchemy(config);
-      const data = await alchemy.core.getTokenBalances(userAddress);
-      setResults(data);
-
-      const tokenDataPromises = [];
-
-      for (let i = 0; i < data.tokenBalances.length; i++) {
-        const tokenData = alchemy.core.getTokenMetadata(
-          data.tokenBalances[i].contractAddress
-        );
-        tokenDataPromises.push(tokenData);
-      }
-
-      setTokenDataObjects(await Promise.all(tokenDataPromises));
+      refetchTokenData();
       setHasQueried(true);
     } catch (error) {
       toast({
@@ -61,6 +69,7 @@ function App() {
     }
     setIsLoading(false);
   }
+  
   return (
     <Box w="100%" overflow={'hidden'}>
       <Connect></Connect>
@@ -88,6 +97,7 @@ function App() {
         <Heading mt={42}>
           Get all the ERC-20 token balances of this address:
         </Heading>
+        <button onClick={refetchTokenData}> refetch</button>
         <Flex alignItems="center" mt={4}>
           <Input
             onChange={(e) => setUserAddress(e.target.value)}
@@ -113,7 +123,7 @@ function App() {
 
         {hasQueried ? (
           <SimpleGrid w={'90vw'} columns={4} spacing={10} >
-            {results?.tokenBalances?.map((tokenBalance, index) => {
+            {tokenData?.tokenBalances?.map((tokenBalance, index) => {
               return (
                 <Flex
                   flexDir={'column'}
