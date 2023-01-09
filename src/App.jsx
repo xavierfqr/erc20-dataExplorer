@@ -97,7 +97,6 @@ function App() {
         <Heading mt={42}>
           Get all the ERC-20 token balances of this address:
         </Heading>
-        <button onClick={refetchTokenData}> refetch</button>
         <Flex alignItems="center" mt={4}>
           <Input
             onChange={(e) => setUserAddress(e.target.value)}
