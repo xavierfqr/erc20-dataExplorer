@@ -26,6 +26,7 @@ function App() {
       network: Network.ETH_GOERLI,
     };
 
+    setIsLoading(true);
     const alchemy = new Alchemy(config);
     const data = await alchemy.core.getTokenBalances(userAddress);
     console.log(data)
@@ -42,6 +43,7 @@ function App() {
 
     setTokenDataObjects(await Promise.all(tokenDataPromises));
     setHasQueried(true);
+    setIsLoading(false);
   }
   return (
     <Box w="100vw">
@@ -79,7 +81,8 @@ function App() {
           bgColor="white"
           fontSize={24}
         />
-        <Button fontSize={20} onClick={getTokenBalance} mt={36} bgColor="blue">
+        {console.log(isLoading)}
+        <Button fontSize={20} onClick={getTokenBalance} mt={36} bgColor="blue" isLoading={isLoading} disabled={isLoading}>
           Check ERC-20 Token Balances
         </Button>
 
